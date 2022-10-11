@@ -305,401 +305,424 @@ export function oracle(
 // ////////////////////////////////////////////////////////////////////////
 //
 //
-// ////////////////////////////////////////////////////////////////////////
-// //
-// // label all intersections
-// //
-// void labelIntersections() {
-//   cout << "\nLabelling intersections...\n\n";
-//
-// 	//
-// 	// 1) initial classification
-//   //
-//
-//   int count[2] = {0,0};
-//
-//   // loop over intersection vertices of P
-//   for (polygon& P : PP)
-//     for (vertex* I : P.vertices(INTERSECTION)) {
-//
-//   		// determine local configuration at this intersection vertex
-//   		vertex* P_m = I.prev;                // P-, predecessor of I on P
-//   		vertex* P_p = I.next;                // P+, successor of I on P
-//   		vertex* Q_m = I.neighbour.prev;     // Q-, predecessor of I on Q
-//   		vertex* Q_p = I.neighbour.next;     // Q+, successor of I on P
-//
-//   		// check positions of Q- and Q+ relative to (P-, I, P+)
-//   		RelativePositionType Q_m_type = oracle(Q_m, P_m, I, P_p);
-//   		RelativePositionType Q_p_type = oracle(Q_p, P_m, I, P_p);
-//
-//   		//
-//   		// check non-overlapping cases
-//   		//
-//   		if ((Q_m_type == RelativePositionType.LEFT  && Q_p_type == RelativePositionType.RIGHT) ||
-//   				(Q_m_type == RelativePositionType.RIGHT && Q_p_type == RelativePositionType.LEFT )) {
-//   			I.label = CROSSING;
-//         count[0]++;
-//       }
-//
-//   		if ((Q_m_type == RelativePositionType.LEFT  && Q_p_type == LEFT ) ||
-//   				(Q_m_type == RelativePositionType.RIGHT && Q_p_type == RIGHT)) {
-//   			I.label = BOUNCING;
-//         count[1]++;
-//       }
-//   		//
-//   		// check overlapping cases
-//   		//
-//   		if ( ( (Q_p_type == RelativePositionType.IS_P_p) && (Q_m_type == RelativePositionType.RIGHT) ) ||
-//   		     ( (Q_m_type == RelativePositionType.IS_P_p) && (Q_p_type == RelativePositionType.RIGHT) ) )
-//   			I.label = RelativePositionType.LEFT_ON;
-//
-//   		if ( ( (Q_p_type == RelativePositionType.IS_P_p) && (Q_m_type == RelativePositionType.LEFT) ) ||
-//   		     ( (Q_m_type == RelativePositionType.IS_P_p) && (Q_p_type == RelativePositionType.LEFT) ) )
-//   			I.label = RelativePositionType.RIGHT_ON;
-//
-//   		if ( ( (Q_p_type == RelativePositionType.IS_P_p) && (Q_m_type == RelativePositionType.IS_P_m) ) ||
-//   		     ( (Q_m_type == RelativePositionType.IS_P_p) && (Q_p_type == RelativePositionType.IS_P_m) ) )
-//   			I.label = ON_ON;
-//
-//   		if ( ( (Q_m_type == RelativePositionType.IS_P_m) && (Q_p_type == RelativePositionType.RIGHT) ) ||
-//   		     ( (Q_p_type == RelativePositionType.IS_P_m) && (Q_m_type == RelativePositionType.RIGHT) ) )
-//   			I.label = ON_RelativePositionType.LEFT;
-//
-//   		if ( ( (Q_m_type == RelativePositionType.IS_P_m) && (Q_p_type == RelativePositionType.LEFT) ) ||
-//   		     ( (Q_p_type == RelativePositionType.IS_P_m) && (Q_m_type == RelativePositionType.LEFT) ) )
-//   			I.label = ON_RelativePositionType.RIGHT;
-//   	}
-//
-//   cout << "... " << count[0] << " crossing and " << count[1] << " bouncing intersection vertices" << endl;
-//
-// 	//
-// 	// 2) classify intersection chains
-// 	//
-//
-//   count[0] = count[1] = 0;
-//
-//   // loop over intersection vertices of P
-//   for (polygon& P : PP)
-//     for (vertex* I : P.vertices(INTERSECTION)) {
-//
-//       // start of an intersection chain ?
-//   		if (I.label == RelativePositionType.LEFT_ON ||
-//   				I.label == RelativePositionType.RIGHT_ON) {
-//
-//   			// remember status of the first chain vertex and vertex itself
-//   			RelativePositionType x;
-//   			if (I.label == RelativePositionType.LEFT_ON)
-//   				x = RelativePositionType.LEFT;
-//   			else
-//   				x = RelativePositionType.RIGHT;
-//         vertex* X = I;
-//
-//   			// proceed to end of intersection chain and mark all visited vertices as NONE
-//   			do {
-//   				I.label = NONE;
-//   				I = I.next;
-//   			} while (I.label == ON_ON);
-//
-//   			RelativePositionType y;
-//   			if (I.label == ON_RelativePositionType.LEFT)
-//   				y = RelativePositionType.LEFT;
-//   			else
-//   				y = RelativePositionType.RIGHT;
-//
-//         // determine type of intersection chain
-//         IntersectionLabel chainType;
-//         if (x != y) {
-//         	chainType = DELAYED_CROSSING;
-//           count[0]++;
-//         }
-//         else {
-//         	chainType = DELAYED_BOUNCING;
-//           count[1]++;
-//         }
-//
-//         // mark both ends of an intersection chain with chainType (i.e., as DELAYED_*)
-//         X.label = chainType;
-//         I.label = chainType;
-//   		}
-//     }
-//
-//   cout << "... " << count[0] << " delayed crossings and " << count[1] << " delayed bouncings" << endl;
-//
-// 	//
-// 	// 3) copy labels from P to Q
-// 	//
-//
-//   // loop over intersection vertices of P
-//   for (polygon& P : PP)
-//     for (vertex* I : P.vertices(INTERSECTION))
-//       I.neighbour.label = I.label;
-//
-//   //
-//   // 3.5) check for special cases
-//   //
-//
-//   set<polygon*> noIntersection[2];
-//   set<polygon*> identical[2];
-//
-//   count[0] = count[1] = 0;
-//
-//   for (int i=0; i<2; ++i) {
-//     vector<polygon>* P_or_Q = &PP;      // if i=0, then do it for P w.r.t. Q
-//     vector<polygon>* Q_or_P = &QQ;
-//
-//     if (i==1) {                         // if i=1, then do it for Q w.r.t. P
-//       P_or_Q = &QQ;
-//       Q_or_P = &PP;
-//     }
-//
-//     // loop over all components of P (or Q)
-//     for (polygon& P : *P_or_Q)
-//       if (P.noCrossingVertex(UNION)) {
-//         //
-//         // P_ has no crossing vertex (but may have bounces or delayed bounces, except for UNION),
-//         // hence it does not intersect with Q_or_P
-//         //
-//         noIntersection[i].insert(&P);   // remember component, and ignore it later in step 4
-//
-//         // is P identical to some component of and Q_or_P?
-//         if (P.allOnOn()) {
-//           identical[i].insert(&P);      // . remember for further processing below
-//         }
-//         else {
-//           // is P inside Q_or_P?
-//           bool isInside = false;
-//           point2D p = P.getNonIntersectionPoint();
-//           for (polygon& Q : *Q_or_P)
-//             if ( Q.pointInPoly(p) )
-//               isInside = !isInside;
-//           if (isInside ^ UNION) {
-//             RR.push_back(P);             // . add P to the result
-//             count[0]++;
-//           }
-//         }
-//       }
-//   }
-//
-//   // handle components of P that are identical to some component of Q
-//   for (polygon* P : identical[0]) {
-//     // is P a hole?
-//     bool P_isHole = false;
-//     for (polygon& P_ : PP)
-//       if ( ( P_.root != P.root ) && (P_.pointInPoly(P.root.p)) )
-//         P_isHole = !P_isHole;
-//
-//     for (polygon* Q : identical[1])
-//       for (vertex* V : Q.vertices(ALL))
-//         if (V == P.root.neighbour) {  // found Q that matches P
-//           // is Q a hole?
-//           bool Q_isHole = false;
-//           for (polygon& Q_ : QQ)
-//             if ( ( Q_.root != Q.root ) && (Q_.pointInPoly(Q.root.p)) )
-//               Q_isHole = !Q_isHole;
-//
-//           // if P and Q are both holes or both are not holes
-//           if (P_isHole == Q_isHole) {
-//             RR.push_back(*P);           // . add P to the result
-//             count[1]++;
-//           }
-//           goto next_P;
-//         }
-//     next_P: ;
-//   }
-//
-//   cout << "... " << count[0] << " interior and " << count[1] << " identical components added to result\n";
-//
-// 	//
-// 	// 4) set entry/exit flags
-// 	//
-//
-//   set<vertex*> split[2];                // split vertex candidates for P and Q
-//   set<vertex*> crossing[2];             // CROSSING vertex candidates for P and Q
-//
-//   for (int i=0; i<2; ++i) {
-//     vector<polygon>* P_or_Q = &PP;      // if i=0, then do it for P w.r.t. Q
-//     vector<polygon>* Q_or_P = &QQ;
-//
-//     if (i==1) {                         // if i=1, then do it for Q w.r.t. P
-//       P_or_Q = &QQ;
-//       Q_or_P = &PP;
-//     }
-//
-//     // loop over all components of P (or Q)
-//     for (polygon& P : *P_or_Q) {
-//
-//       // ignore P if it does not intersect with Q_or_P (detected in step 3.5 above)
-//       if(noIntersection[i].find(&P) != noIntersection[i].end())
-//         continue;
-//
-//       // start at a non-intersection vertex of P
-//       vertex* V = P.getNonIntersectionVertex();
-//
-//       // check if it is inside or outside Q (or P)
-//       // and set ENTRY/EXIT status accordingly
-//       EntryExitLabel status = ENTRY;
-//       for (polygon& Q : *Q_or_P)
-//         if (Q.pointInPoly(V.p))
-//           toggle(status);
-//
-//       //
-//       // starting at V, loop over those vertices of P, that are either
-//       // a crossing intersection or marked as ends of an intersection chain
-//       //
-//       bool first_chain_vertex = true;     // needed for dealing with crossing chains
-//
-//       for (vertex* I : P.vertices(INTERSECTION, V)) {
-//         //
-//         // in the case of normal crossings, we...
-//         //
-//         if (I.label == CROSSING) {
-//           // mark vertex with current ENTRY/EXIT status
-//     			I.enex = status;
-//           // toggle status from ENTRY to EXIT or vice versa
-//     			toggle(status);
-//         }
-//
-//         //
-//         // identify split vertex candidates (INTERIOR bouncing vertices)
-//         //
-//         if ( (I.label == BOUNCING) && ((status == EXIT) ^ UNION) )
-//           split[i].insert(I);
-//
-//         //
-//         // in the case of a delayed crossing chain, we
-//         // mark both end points of the chain with the current ENTRY/EXIT status,
-//         // toggling the status only at the end last chain vertex,
-//         // and, in case of a delayed EXIT  crossing, the first vertex
-//         //  or, in case of a delayed ENTRY crossing, the last  vertex,
-//         // of the chain as CROSSING
-//         //
-//         if (I.label == DELAYED_CROSSING) {
-//           // mark vertex with current ENTRY/EXIT status
-//           I.enex = status;
-//
-//           if (first_chain_vertex) {       // are we at the first vertex of a delayed crossing chain?
-//             if ((status == EXIT) ^ UNION)
-//               I.label = CROSSING;        // mark first vertex as CROSSING
-//             first_chain_vertex = false;
-//           }
-//           else {                          // here we are at the last vertex of a delayed crossing chain
-//             if ((status == ENTRY) ^ UNION)
-//               I.label = CROSSING;        // mark last vertex as CROSSING
-//             first_chain_vertex = true;
-//
-//             // toggle status from ENTRY to EXIT or vice versa (only for last chain vertex)
-//             toggle(status);
-//           }
-//         }
-//
-//         //
-//         // in the case of a delayed bouncing chain, we
-//         // mark both end points of the chain with the current ENTRY/EXIT status
-//         // toggling the status at both end points of the chain,
-//         // and, in case of a delayed INTERIOR bouncing, both end points
-//         // of the chain as CROSSING candidates
-//         //
-//         if (I.label == DELAYED_BOUNCING) {
-//           // mark vertex with current ENTRY/EXIT status
-//           I.enex = status;
-//
-//           if (first_chain_vertex) {       // are we at the first vertex of a delayed crossing chain?
-//             if ((status == EXIT) ^ UNION)
-//               crossing[i].insert(I);      // mark first EXIT vertex as CROSSING candidate
-//             first_chain_vertex = false;
-//           }
-//           else {                          // here we are at the last vertex of a delayed crossing chain
-//             if ((status == ENTRY) ^ UNION)
-//               crossing[i].insert(I);      // mark last ENTRY vertex as CROSSING candidate
-//             first_chain_vertex = true;
-//
-//           }
-//           // toggle status from ENTRY to EXIT or vice versa (for first AND last chain vertex)
-//           toggle(status);
-//         }
-//   		}
-//     }
-//   }
-//
-// 	//
-// 	// 5) handle split vertex pairs
-// 	//
-//
-//   count[0] = 0;
-//
-//   // loop over P's split candidates
-//   for (vertex* I_P : split[0]) {
-//     vertex* I_Q = I_P.neighbour;
-//
-//     // check if the neighbour on Q is also a split candidate
-//     if (split[1].find(I_Q) != split[1].end()) {
-//       count[0]++;
-//       //
-//       // split vertex pair
-//       //
-//
-//       // duplicate vertices
-// 			vertex* V_P = new vertex(I_P.p);
-// 			vertex* V_Q = new vertex(I_Q.p);
-//
-//       // compute areas to compare local orientation
-//       double sP = A( I_P.prev.p, I_P.p, I_P.next.p);
-//       double sQ = A( I_Q.prev.p, I_Q.p, I_Q.next.p);
-//
-//       // link vertices correctly
-//       if (sP*sQ > 0) {                  // same local orientation
-//         link(I_P, V_Q);
-//         link(I_Q, V_P);
-//       }
-//       else {                            // different local orientation
-//         link(V_P, V_Q);
-//       }
-//
-//       // add duplicate vertices to P and Q
-//       insertVertex(V_P, I_P);
-//       insertVertex(V_Q, I_Q);
-//
-//       // mark all four vertices correctly
-//       if (!UNION) {
-//         I_P.enex = EXIT;
-//         V_P.enex = ENTRY;
-//         I_Q.enex = EXIT;
-//         V_Q.enex = ENTRY;
-//       }
-//       else {
-//         I_P.enex = ENTRY;
-//         V_P.enex = EXIT;
-//         I_Q.enex = ENTRY;
-//         V_Q.enex = EXIT;
-//       }
-//
-//       I_P.label = CROSSING;
-//       V_P.label = CROSSING;
-//       I_Q.label = CROSSING;
-//       V_Q.label = CROSSING;
-//     }
-//   }
-//
-//   cout << "... " << count[0] << " bouncing vertex pairs split" << endl;
-//
-// 	//
-// 	// 6) handle CROSSING vertex candidates
-// 	//
-//
-//   // loop over P's CROSSING candidates
-//   for (vertex* I_P : crossing[0]) {
-//     vertex* I_Q = I_P.neighbour;
-//
-//     // check if the neighbour on Q is also a CROSSING candidate
-//     if (crossing[1].find(I_Q) != crossing[1].end()) {
-//       //
-//       // mark CROSSING candidate pair as such
-//       //
-//       I_P.label = CROSSING;
-//       I_Q.label = CROSSING;
-//     }
-//   }
-// }
+////////////////////////////////////////////////////////////////////////
+//
+// label all intersections
+//
+function labelIntersections() {
+  // cout << "\nLabelling intersections...\n\n";
+
+  //
+  // 1) initial classification
+  //
+
+  let count = [0, 0];
+
+  // loop over intersection vertices of P
+  for (const P of PP)
+    for (const I of P.vertices(INTERSECTION)) {
+      // determine local configuration at this intersection vertex
+      let P_m = I.prev; // P-, predecessor of I on P
+      let P_p = I.next; // P+, successor of I on P
+      let Q_m = I.neighbour.prev; // Q-, predecessor of I on Q
+      let Q_p = I.neighbour.next; // Q+, successor of I on P
+
+      // check positions of Q- and Q+ relative to (P-, I, P+)
+      let Q_m_type = oracle(Q_m, P_m, I, P_p);
+      let Q_p_type = oracle(Q_p, P_m, I, P_p);
+
+      //
+      // check non-overlapping cases
+      //
+      if (
+        (Q_m_type == RelativePositionType.LEFT &&
+          Q_p_type == RelativePositionType.RIGHT) ||
+        (Q_m_type == RelativePositionType.RIGHT &&
+          Q_p_type == RelativePositionType.LEFT)
+      ) {
+        I.label = CROSSING;
+        count[0]++;
+      }
+
+      if (
+        (Q_m_type == RelativePositionType.LEFT && Q_p_type == LEFT) ||
+        (Q_m_type == RelativePositionType.RIGHT && Q_p_type == RIGHT)
+      ) {
+        I.label = BOUNCING;
+        count[1]++;
+      }
+      //
+      // check overlapping cases
+      //
+      if (
+        (Q_p_type == RelativePositionType.IS_P_p &&
+          Q_m_type == RelativePositionType.RIGHT) ||
+        (Q_m_type == RelativePositionType.IS_P_p &&
+          Q_p_type == RelativePositionType.RIGHT)
+      )
+        I.label = RelativePositionType.LEFT_ON;
+
+      if (
+        (Q_p_type == RelativePositionType.IS_P_p &&
+          Q_m_type == RelativePositionType.LEFT) ||
+        (Q_m_type == RelativePositionType.IS_P_p &&
+          Q_p_type == RelativePositionType.LEFT)
+      )
+        I.label = RelativePositionType.RIGHT_ON;
+
+      if (
+        (Q_p_type == RelativePositionType.IS_P_p &&
+          Q_m_type == RelativePositionType.IS_P_m) ||
+        (Q_m_type == RelativePositionType.IS_P_p &&
+          Q_p_type == RelativePositionType.IS_P_m)
+      )
+        I.label = ON_ON;
+
+      if (
+        (Q_m_type == RelativePositionType.IS_P_m &&
+          Q_p_type == RelativePositionType.RIGHT) ||
+        (Q_p_type == RelativePositionType.IS_P_m &&
+          Q_m_type == RelativePositionType.RIGHT)
+      )
+        I.label = ON_RelativePositionType.LEFT;
+
+      if (
+        (Q_m_type == RelativePositionType.IS_P_m &&
+          Q_p_type == RelativePositionType.LEFT) ||
+        (Q_p_type == RelativePositionType.IS_P_m &&
+          Q_m_type == RelativePositionType.LEFT)
+      )
+        I.label = ON_RelativePositionType.RIGHT;
+    }
+
+  // cout << "... " << count[0] << " crossing and " << count[1] << " bouncing intersection vertices" << endl;
+
+  //
+  // 2) classify intersection chains
+  //
+
+  count[0] = count[1] = 0;
+
+  // loop over intersection vertices of P
+  for (const P of PP)
+    for (const I of P.vertices(INTERSECTION)) {
+      // start of an intersection chain ?
+      if (
+        I.label == RelativePositionType.LEFT_ON ||
+        I.label == RelativePositionType.RIGHT_ON
+      ) {
+        // remember status of the first chain vertex and vertex itself
+        let x: RelativePositionType;
+        if (I.label == RelativePositionType.LEFT_ON)
+          x = RelativePositionType.LEFT;
+        else x = RelativePositionType.RIGHT;
+        let X = I;
+
+        // proceed to end of intersection chain and mark all visited vertices as NONE
+        do {
+          I.label = NONE;
+          I = I.next;
+        } while (I.label == ON_ON);
+
+        let y: RelativePositionType;
+        if (I.label == ON_RelativePositionType.LEFT)
+          y = RelativePositionType.LEFT;
+        else y = RelativePositionType.RIGHT;
+
+        // determine type of intersection chain
+        let chainType: IntersectionLabel;
+        if (x != y) {
+          chainType = DELAYED_CROSSING;
+          count[0]++;
+        } else {
+          chainType = DELAYED_BOUNCING;
+          count[1]++;
+        }
+
+        // mark both ends of an intersection chain with chainType (i.e., as DELAYED_*)
+        X.label = chainType;
+        I.label = chainType;
+      }
+    }
+
+  // cout << "... " << count[0] << " delayed crossings and " << count[1] << " delayed bouncings" << endl;
+
+  //
+  // 3) copy labels from P to Q
+  //
+
+  // loop over intersection vertices of P
+  for (const P of PP)
+    for (const I of P.vertices(INTERSECTION)) I.neighbour.label = I.label;
+
+  //
+  // 3.5) check for special cases
+  //
+
+  let noIntersection = Set<polygon>();
+  let identical = Set<polygon>();
+
+  count[0] = count[1] = 0;
+
+  for (let i = 0; i < 2; ++i) {
+    let P_or_Q = PP; // if i=0, then do it for P w.r.t. Q
+    let Q_or_P = QQ;
+
+    if (i == 1) {
+      // if i=1, then do it for Q w.r.t. P
+      P_or_Q = QQ;
+      Q_or_P = PP;
+    }
+
+    // loop over all components of P (or Q)
+    for (const P of P_or_Q)
+      if (P.noCrossingVertex(UNION)) {
+        //
+        // P_ has no crossing vertex (but may have bounces or delayed bounces, except for UNION),
+        // hence it does not intersect with Q_or_P
+        //
+        noIntersection[i].add(P); // remember component, and ignore it later in step 4
+
+        // is P identical to some component of and Q_or_P?
+        if (P.allOnOn()) {
+          identical[i].insert(P); // . remember for further processing below
+        } else {
+          // is P inside Q_or_P?
+          let isInside = false;
+          let p = P.getNonIntersectionPoint();
+          for (const Q of Q_or_P) {
+            if (Q.pointInPoly(p)) {
+              isInside = !isInside;
+            }
+          }
+          if (isInside ^ UNION) {
+            RR.push_back(P); // . add P to the result
+            count[0]++;
+          }
+        }
+      }
+  }
+
+  // handle components of P that are identical to some component of Q
+  for (const P of identical[0]) {
+    // is P a hole?
+    let P_isHole = false;
+    for (const P_ of PP) {
+      if (P_.root != P.root && P_.pointInPoly(P.root.p)) P_isHole = !P_isHole;
+    }
+  }
+
+  for (const Q of identical[1])
+    for (const V of Q.vertices(ALL))
+      if (V == P.root.neighbour) {
+        // found Q that matches P
+        // is Q a hole?
+        let Q_isHole = false;
+        for (const Q_ of QQ) {
+          if (Q_.root != Q.root && Q_.pointInPoly(Q.root.p)) {
+            Q_isHole = !Q_isHole;
+          }
+        }
+
+        // if P and Q are both holes or both are not holes
+        if (P_isHole == Q_isHole) {
+          RR.push_back(P); // . add P to the result
+          count[1]++;
+        }
+        continue next_P;
+      }
+  // label: next_P;
+}
+
+// cout << "... " << count[0] << " interior and " << count[1] << " identical components added to result\n";
+
+//
+// 4) set entry/exit flags
+//
+
+let split = Set<vertex>();
+let crossing = Set<vertex>();
+
+for (let i = 0; i < 2; ++i) {
+  let P_or_Q = PP; // if i=0, then do it for P w.r.t. Q
+  let Q_or_P = QQ;
+
+  if (i == 1) {
+    // if i=1, then do it for Q w.r.t. P
+    P_or_Q = QQ;
+    Q_or_P = PP;
+  }
+
+  // loop over all components of P (or Q)
+  for (const P of P_or_Q) {
+    // ignore P if it does not intersect with Q_or_P (detected in step 3.5 above)
+    if (noIntersection[i].find(P) != noIntersection[i].end()) continue;
+
+    // start at a non-intersection vertex of P
+    let V = P.getNonIntersectionVertex();
+
+    // check if it is inside or outside Q (or P)
+    // and set ENTRY/EXIT status accordingly
+    let status = EntryExitLabel.ENTRY;
+    for (const Q of Q_or_P) {
+      if (Q.pointInPoly(V.p)) toggle(status);
+    }
+  }
+
+  //
+  // starting at V, loop over those vertices of P, that are either
+  // a crossing intersection or marked as ends of an intersection chain
+  //
+  let first_chain_vertex = true; // needed for dealing with crossing chains
+
+  for (const I of P.vertices(INTERSECTION, V)) {
+    //
+    // in the case of normal crossings, we...
+    //
+    if (I.label == CROSSING) {
+      // mark vertex with current ENTRY/EXIT status
+      I.enex = status;
+      // toggle status from ENTRY to EXIT or vice versa
+      toggle(status);
+    }
+
+    //
+    // identify split vertex candidates (INTERIOR bouncing vertices)
+    //
+    if (I.label == BOUNCING && (status == EXIT) ^ UNION) {
+      split[i].insert(I);
+    }
+
+    //
+    // in the case of a delayed crossing chain, we
+    // mark both end points of the chain with the current ENTRY/EXIT status,
+    // toggling the status only at the end last chain vertex,
+    // and, in case of a delayed EXIT  crossing, the first vertex
+    //  or, in case of a delayed ENTRY crossing, the last  vertex,
+    // of the chain as CROSSING
+    //
+    if (I.label == DELAYED_CROSSING) {
+      // mark vertex with current ENTRY/EXIT status
+      I.enex = status;
+
+      if (first_chain_vertex) {
+        // are we at the first vertex of a delayed crossing chain?
+        if ((status == EXIT) ^ UNION) I.label = CROSSING; // mark first vertex as CROSSING
+        first_chain_vertex = false;
+      } else {
+        // here we are at the last vertex of a delayed crossing chain
+        if ((status == ENTRY) ^ UNION) I.label = CROSSING; // mark last vertex as CROSSING
+        first_chain_vertex = true;
+
+        // toggle status from ENTRY to EXIT or vice versa (only for last chain vertex)
+        toggle(status);
+      }
+    }
+
+    //
+    // in the case of a delayed bouncing chain, we
+    // mark both end points of the chain with the current ENTRY/EXIT status
+    // toggling the status at both end points of the chain,
+    // and, in case of a delayed INTERIOR bouncing, both end points
+    // of the chain as CROSSING candidates
+    //
+    if (I.label == DELAYED_BOUNCING) {
+      // mark vertex with current ENTRY/EXIT status
+      I.enex = status;
+
+      if (first_chain_vertex) {
+        // are we at the first vertex of a delayed crossing chain?
+        if ((status == EXIT) ^ UNION) crossing[i].insert(I); // mark first EXIT vertex as CROSSING candidate
+        first_chain_vertex = false;
+      } else {
+        // here we are at the last vertex of a delayed crossing chain
+        if ((status == ENTRY) ^ UNION) crossing[i].insert(I); // mark last ENTRY vertex as CROSSING candidate
+        first_chain_vertex = true;
+      }
+      // toggle status from ENTRY to EXIT or vice versa (for first AND last chain vertex)
+      toggle(status);
+    }
+  }
+}
+
+//
+// 5) handle split vertex pairs
+//
+
+count[0] = 0;
+
+// loop over P's split candidates
+for (const I_P of split[0]) {
+  let I_Q = I_P.neighbour;
+
+  // check if the neighbour on Q is also a split candidate
+  if (split[1].find(I_Q) != split[1].end()) {
+    count[0]++;
+    //
+    // split vertex pair
+    //
+
+    // duplicate vertices
+    let V_P = new vertex(I_P.p);
+    let V_Q = new vertex(I_Q.p);
+
+    // compute areas to compare local orientation
+    let sP = A(I_P.prev.p, I_P.p, I_P.next.p);
+    let sQ = A(I_Q.prev.p, I_Q.p, I_Q.next.p);
+
+    // link vertices correctly
+    if (sP * sQ > 0) {
+      // same local orientation
+      link(I_P, V_Q);
+      link(I_Q, V_P);
+    } else {
+      // different local orientation
+      link(V_P, V_Q);
+    }
+
+    // add duplicate vertices to P and Q
+    insertVertex(V_P, I_P);
+    insertVertex(V_Q, I_Q);
+
+    // mark all four vertices correctly
+    if (!UNION) {
+      I_P.enex = EXIT;
+      V_P.enex = ENTRY;
+      I_Q.enex = EXIT;
+      V_Q.enex = ENTRY;
+    } else {
+      I_P.enex = ENTRY;
+      V_P.enex = EXIT;
+      I_Q.enex = ENTRY;
+      V_Q.enex = EXIT;
+    }
+
+    I_P.label = CROSSING;
+    V_P.label = CROSSING;
+    I_Q.label = CROSSING;
+    V_Q.label = CROSSING;
+  }
+
+  // cout << "... " << count[0] << " bouncing vertex pairs split" << endl;
+
+  //
+  // 6) handle CROSSING vertex candidates
+  //
+
+  // loop over P's CROSSING candidates
+  for (const I_P of crossing[0]) {
+    let I_Q = I_P.neighbour;
+
+    // check if the neighbour on Q is also a CROSSING candidate
+    if (crossing[1].find(I_Q) != crossing[1].end()) {
+      //
+      // mark CROSSING candidate pair as such
+      //
+      I_P.label = CROSSING;
+      I_Q.label = CROSSING;
+    }
+  }
+}
 // //
 // ////////////////////////////////////////////////////////////////////////
 //
